@@ -327,8 +327,19 @@ TODO: getKey
 
 # Thank You
 
-TODO: Haskell Love
-TODO: LeapYear + plug
+[.column]
+
+![inline 100%](haskell-love.png)
+
+[.column]
+
+![inline](leapyear.svg)
+
+> [https://leapyear.io](https://leapyear.io)
+
+^ Many thanks to Haskell Love for giving me the opportunity to present today. This was my first conference talk, and it was truly an amazing experience for me.
+
+^ I also want to thank my company, LeapYear. In my time there, I've grown so much as a developer, but also as a person. I definitely would not be up here if not for my amazing coworkers. If you'll allow a quick plug: we're based in San Francisco working on privacy-preserving analytics. We primarily work in Haskell, Scala, and Typescript, but we promote functional programming best practices throughout our codebase. We're also hiring, so if that sounds like a good time to you, check out our website and take a look at our job openings.
 
 ---
 
