@@ -1,5 +1,5 @@
 theme: Plain Jane (LeapYear)
-footer: `aeson-schemas` | Brandon Chinn | Haskell Love 2020
+footer: Haskell Love 2020 | `aeson-schemas`
 slidenumbers: true
 code: auto(30), Monaco, line-height(1.1)
 autoscale: true
