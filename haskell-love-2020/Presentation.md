@@ -307,17 +307,68 @@ data Query2 = Query2
 
 # Using `aeson-schemas`
 
-TODO: schema qq
-TODO: get qq
+[.column]
+
+```hs
+{-# LANGUAGES DataKinds #-}
+{-# LANGUAGES QuasiQuotes #-}
+
+import Data.Aeson (decodeFileStrict)
+import Data.Aeson.Schema
+
+type MySchema = [schema|
+  {
+    users: List {
+      id: Int,
+      name: Text,
+    },
+  }
+|]
+```
+
+[.column]
+
+```hs
+main :: IO ()
+main = do
+  let f = "example.json"
+  result <- decodeFileStrict f
+
+  let obj :: Object MySchema
+      obj = fromJust result
+
+  -- outputs:
+  -- ["Alice", "Bob", "Claire"]
+  print [get| obj.users[].name |]
+```
+
+^ This code snippet gives a quick overview of what `aeson-schemas` can do.
+
+^ First, we define the schema of the JSON data as `MySchema`, using the `schema` quasiquoter. Then, we can decode `Object MySchema` with standard `aeson` decoding functions.
+
+^ Finally, we can use the `get` quasiquoter to extract values from the `Object`. In this case, we get the `users` key, which is a list of objects with the schema `id: Int, name: Text`. Then for each object in the list, get the `name` key, resulting in a `[Text]` value.
+
+---
+
+TODO: schema DSL
+
+---
+
+TODO: get DSL
+
+---
+
 TODO: usage in graphql
 
 ---
 
 # Implementing `aeson-schemas`
 
-TODO: SchemaObject + SchemaInt + SchemaBool
+TODO: Bool,Int,Double,Text,Maybe,List,Object
 TODO: parseValue
 TODO: getKey
+TODO: example using only DataKinds + getKey
+NOTE: Don't implement quasiquoters
 
 ---
 
