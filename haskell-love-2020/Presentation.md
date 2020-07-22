@@ -305,6 +305,24 @@ data Query2 = Query2
 
 ---
 
+[.build-lists: true]
+
+# Problem Requirements
+
+1. Type safe
+1. Avoid polluting namespace
+1. Nice query language
+
+^ At this point, we've seen some of the limitations vanilla Haskell places on us, seen most clearly in the GraphQL use-case. Note that none of this is the fault of `aeson`, but rather due to the current clunkiness of Haskell data type definitions. Regardless, there is a less-than-ideal developer experience here, and it'd be nice to have an alternate solution. But what would we want in our solution?
+
+^ First, and most importantly, is type safety. We're Haskell programmers, after all; if we don't have type safety, what are we?? The primary area of we want to keep type safe is getting keys from objects. If I know what keys are in this JSON object, it'd be nice to have the compiler check that I'm using the correct keys.
+
+^ Second, we should try to avoid polluting the namespace. It would be a shame to avoid using `user` as a variable name just because it's a key in a JSON object. It's also conceivable for a JSON object to contain keys that are reserved keywords in Haskell, like `type`.
+
+^ Lastly, it would be nice to have a better query language. Record fields are notoriously annoying for dealing with nested data, and, in my opinion, lenses aren't much better.
+
+---
+
 # Using `aeson-schemas`
 
 [.column]
@@ -342,11 +360,13 @@ main = do
   print [get| obj.users[].name |]
 ```
 
-^ This code snippet gives a quick overview of what `aeson-schemas` can do.
+^ With those requirements in mind, `aeson-schemas` is the library I came up with. This code snippet gives a quick overview of what `aeson-schemas` can do.
 
 ^ First, we define the schema of the JSON data as `MySchema`, using the `schema` quasiquoter. Then, we can decode `Object MySchema` with standard `aeson` decoding functions.
 
 ^ Finally, we can use the `get` quasiquoter to extract values from the `Object`. In this case, we get the `users` key, which is a list of objects with the schema `id: Int, name: Text`. Then for each object in the list, get the `name` key, resulting in a `[Text]` value.
+
+^ Going back to the problem requirements, it's type safe. If you try to get `obj.users[].foo`, you'll get an error *at compile-time*. The only thing it adds to the namespace is `MySchema`, and the `get` quasiquoter allows us to write nicer query than using vanilla Haskell functions would allow us.
 
 ---
 
