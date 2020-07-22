@@ -1,7 +1,7 @@
 theme: Plain Jane (LeapYear)
 footer: Haskell Love 2020 | `aeson-schemas`
 slidenumbers: true
-code: auto(30), Monaco, line-height(1.1)
+code: auto(30), Menlo, line-height(1.1)
 autoscale: true
 
 [.hide-footer]
@@ -436,6 +436,8 @@ map [get| .name |] users
 
 ^ Using quasiquoters, we can get pretty decent syntax for operations that would be difficult to read with plain Haskell syntax, like the example here.
 
+^ DEMO: example.sh
+
 ---
 
 # Using `aeson-schemas`
@@ -487,6 +489,63 @@ type Query2 = [schema|
 # Implementing `aeson-schemas`
 
 ^ Pause for questions here
+
+^ Now, I'm going to give a general overview of how `aeson-schemas` is implemented. But first, I'll do a brief introduction on type-level programming.
+
+---
+
+# Type-level programming
+
+| Value | Type | Kind |
+|-------|------|------|
+| `True`, `False` | `Bool` | `*`[^2] |
+| `Just 1`, `Nothing` | `Maybe Int` | `*` |
+| N/A | `Maybe` | `* -> *` |
+
+^ You're probably familiar with values and types. The `Bool` type has two possible values: `True` and `False`, and the `Maybe Int` type is either the `Nothing` value, or a `Just` value, which itself contains any integer. These two different types have the same *kind*, which is kind of the type-of-types.
+
+^ `Maybe`, for example, is a type constructor, and it has the kind `* -> *`. You can't actually create values with the type `Maybe`, because it needs to be applied to another type like `Maybe Int`. Only types with kind `*` can have values.
+
+[^2]: `*` is actually deprecated in favor of `Type` from `Data.Kind`, but I like how `*` looks better, so that's why I'm using it.
+
+---
+
+# Type-level programming
+## With `-XDataKinds`
+
+| Value | Type | Kind |
+|-------|------|------|
+| `True`, `False` | `Bool` | `*` |
+| N/A | `'True`, `'False` | `Bool` |
+
+^ With the `DataKinds` extension, we can use values at the type level now. Here, `True` and `False` previously had the type of `Bool`, and with `DataKinds`, you can also use them as types, where they now have the kind `Bool`. It's highly recommended to prefix with a single quote when using a value that's been promoted to a type.
+
+---
+
+# Type-level programming
+
+```hs
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
+
+data Status = OPEN | CLOSED
+
+data Restaurant (status :: Status) = Restaurant { name :: String }
+  deriving (Show)
+
+createRestaurant :: String -> Restaurant 'OPEN
+createRestaurant name = Restaurant name
+
+closeRestaurant :: Restaurant 'OPEN -> Restaurant 'CLOSED
+closeRestaurant (Restaurant name) = Restaurant name
+
+openRestaurant :: Restaurant 'CLOSED -> Restaurant 'OPEN
+openRestaurant (Restaurant name) = Restaurant name
+```
+
+^ TODO
+
+^ DEMO: ./restaurant.sh
 
 ---
 
