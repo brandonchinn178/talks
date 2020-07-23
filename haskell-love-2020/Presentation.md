@@ -436,7 +436,7 @@ map [get| .name |] users
 
 ^ Using quasiquoters, we can get pretty decent syntax for operations that would be difficult to read with plain Haskell syntax, like the example here.
 
-^ DEMO: example.sh
+^ DEMO: `./example.sh`
 
 ---
 
@@ -502,7 +502,7 @@ type Query2 = [schema|
 | `Just 1`, `Nothing` | `Maybe Int` | `*` |
 | N/A | `Maybe` | `* -> *` |
 
-^ You're probably familiar with values and types. The `Bool` type has two possible values: `True` and `False`, and the `Maybe Int` type is either the `Nothing` value, or a `Just` value, which itself contains any integer. These two different types have the same *kind*, which is kind of the type-of-types.
+^ You're probably familiar with values and types. The `Bool` type has two possible values: `True` and `False`, and the `Maybe Int` type is either the `Nothing` value, or a `Just` value containing an `Int`. These two types are different, but they have the same *kind*, which is the type-of-types.
 
 ^ `Maybe`, for example, is a type constructor, and it has the kind `* -> *`. You can't actually create values with the type `Maybe`, because it needs to be applied to another type like `Maybe Int`. Only types with kind `*` can have values.
 
@@ -548,7 +548,7 @@ openRestaurant (Restaurant name) = Restaurant name
 
 ^ Now that we can use values at the type level, we can teach the compiler to restrict certain actions by encoding requirements in the types. For example, it might be a requirement that you can only close an open restaurant, or that you can only open a closed restaurant. By including a type variable on `Restaurant` with a Kind of `Status`, we can restrict certain functions based on the status of the restaurant.
 
-^ DEMO: ./restaurant.sh
+^ DEMO: `./restaurant.sh`
 
 ^ Now, one tricky thing is that after Haskell is compiled, the types go away. Sure, it's nice that we can use `DataKinds` to make the compiler check our logic for us, but we would also like the code to actually do different things based on the type. This sounds like a perfect job for type classes!
 
@@ -658,7 +658,7 @@ fromDynamic :: Typeable a => Dynamic -> Maybe a
 
 ^ Now, a fancy type will do us no good if we can't load data with it. First, let's write an `Object` data type that will store the schema for its data. Instead of storing the unparsed JSON `Value`, however, we'll parse the `Value` and store it as `Dynamic`, which lets us store different types in the same `HashMap`.
 
-^ `toDyn` will convert any value to `Dynamic`, and `fromDynamic` will return `Just` the value, or `Nothing`, if the `Dynamic` value contains a different type than the type you're asking for. Theoretically, we'll never get `Nothing`, because we're storing what type the value should be in the `schema`. We just need to make sure to not export the `UnsafeObject` constructor, so that a random user of our library won't accidentally modify this `HashMap` and break this invariant.
+^ `toDyn` will convert any value to `Dynamic`, and `fromDynamic` will return `Just` the value, or `Nothing`, if the `Dynamic` value contains a different type than the type you're asking for. Theoretically, we'll never get `Nothing`, because we're storing what type we expect for any values in the `schema`. We just need to make sure to not export the `UnsafeObject` constructor, so that a random user of our library won't accidentally modify this `HashMap` and break this invariant.
 
 ---
 
@@ -771,7 +771,7 @@ instance IsSchemaType schema => FromJSON (Object schema) where
 
 ^ And now, with `parseValue` implemented, we can go ahead and write a `FromJSON` instance for `Object`. One thing that I didn't include here is I also pass in the path of keys to `parseValue`, so that if a JSON value doesn't parse successfully, we can show a nice error message that shows the path and schema that didn't parse.
 
-^ DEMO: ./badDecode.sh
+^ DEMO: `./badDecode.sh`
 
 ---
 

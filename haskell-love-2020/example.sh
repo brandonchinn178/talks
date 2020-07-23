@@ -10,6 +10,7 @@ exec stack ghci Example.hs \
 # DEMO:
 #   >>> result <- getResult
 #   >>> result
+#   >>> :t result
 #   >>> [get| result.users |]
 #   >>> [get| result.users[].id |]
 #   >>> :t [get| result.users[].id |]

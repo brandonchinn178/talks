@@ -11,6 +11,5 @@ exec stack ghci Restaurant.hs \
 #   >>> :t restaurant
 #   >>> :k Restaurant
 #   >>> :k Restaurant 'OPEN
-#   >>> closeRestaurant restaurant
 #   >>> :t closeRestaurant restaurant
-#   >>> openRestaurant restaurant
+#   >>> :t openRestaurant restaurant
