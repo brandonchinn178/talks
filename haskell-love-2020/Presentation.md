@@ -606,11 +606,260 @@ y = Just True
 
 # Implementing `aeson-schemas`
 
-TODO: Bool,Int,Double,Text,Maybe,List,Object
-TODO: parseValue
-TODO: getKey
-TODO: example using only DataKinds + getKey
-NOTE: Don't implement quasiquoters
+```hs
+import GHC.TypeLits (Symbol)
+
+data SchemaType
+  = SchemaBool
+  | SchemaInt
+  | SchemaDouble
+  | SchemaText
+  | SchemaMaybe SchemaType
+  | SchemaList SchemaType
+  | SchemaObject [(Symbol, SchemaType)]
+```
+
+^ First, we need to set up our data type that will store the JSON schema at the type level. For the sake of time, I won't be including all of the `aeson-schemas` features, just a basic implementation.
+
+^ For now, our JSON schema will only allow `Bool`, `Int`, `Double`, and `Text` values. `SchemaMaybe SchemaBool` would represent a `Bool` value that can be nullable, `SchemaList SchemaInt` would represent a list of `Int` values, and `SchemaObject` can be used to make nested objects. `Symbol` here is just the type-level version of `String`s.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+{-# LANGUAGE DataKinds #-}
+
+type MySchema = 'SchemaObject
+  '[ '( "users"
+      , 'SchemaList (
+          'SchemaObject
+            '[ '("id", 'SchemaInt)
+             , '("name", 'SchemaText)
+             ]
+        )
+      )
+   ]
+```
+
+^ And with just that single definition, we can now write a JSON schema as a type! Note the use of the single quotes. Since we're working at the type-level now, we need to make sure we're writing type-level lists and type-level tuples.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+data Object (schema :: SchemaType) = UnsafeObject (HashMap Text Dynamic)
+
+-- From Data.Dynamic, rewritten here for reference
+toDyn :: Typeable a => a -> Dynamic
+fromDynamic :: Typeable a => Dynamic -> Maybe a
+```
+
+^ Now, a fancy type will do us no good if we can't load data with it. First, let's write an `Object` data type that will store the schema for its data. Instead of storing the unparsed JSON `Value`, however, we'll parse the `Value` and store it as `Dynamic`, which lets us store different types in the same `HashMap`.
+
+^ `toDyn` will convert any value to `Dynamic`, and `fromDynamic` will return `Just` the value, or `Nothing`, if the `Dynamic` value contains a different type than the type you're asking for. Theoretically, we'll never get `Nothing`, because we're storing what type the value should be in the `schema`. We just need to make sure to not export the `UnsafeObject` constructor, so that a random user of our library won't accidentally modify this `HashMap` and break this invariant.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+type family SchemaResult (schema :: SchemaType) where
+  SchemaResult 'SchemaBool = Bool
+  SchemaResult 'SchemaInt = Int
+  SchemaResult 'SchemaDouble = Double
+  SchemaResult 'SchemaText = Text
+  SchemaResult ('SchemaMaybe inner) = Maybe (SchemaResult inner)
+  SchemaResult ('SchemaList inner) = [SchemaResult inner]
+  SchemaResult ('SchemaObject schema) = Object ('SchemaObject schema)
+```
+
+^ Next, we need a type family to specify the type we want to parse for a given schema. Notice that `SchemaMaybe` and `SchemaList` need to apply `SchemaResult` again to their inner schema, so that `SchemaMaybe SchemaBool` correctly resolves to `Maybe Bool`. And lastly, a `SchemaObject` will be parsed as our `Object` type with the `SchemaObject` stored as its schema.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+class IsSchemaType (schema :: SchemaType) where
+  parseValue :: Value -> Parser (SchemaResult schema)
+```
+
+[.column]
+
+```hs
+instance IsSchemaType 'SchemaBool where
+  -- parseValue :: Value -> Parser Bool
+  parseValue = parseJSON
+
+instance IsSchemaType 'SchemaInt where
+  -- parseValue :: Value -> Parser Int
+  parseValue = parseJSON
+```
+
+[.column]
+
+```hs
+instance IsSchemaType 'SchemaDouble where
+  -- parseValue :: Value -> Parser Double
+  parseValue = parseJSON
+
+instance IsSchemaType 'SchemaText where
+  -- parseValue :: Value -> Parser Text
+  parseValue = parseJSON
+```
+
+^ Now, we can write a type class that will parse JSON `Value`s for our schema types. These schemas are straightforward, since we can just use the normal `parseJSON` function.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+instance IsSchemaType inner => IsSchemaType ('SchemaMaybe inner) where
+  -- parseValue :: Value -> Parser (Maybe (SchemaResult inner))
+  parseValue Aeson.Null = return Nothing
+  parseValue value = Just <$> parseValue @inner value
+
+instance IsSchemaType inner => IsSchemaType ('SchemaList inner) where
+  -- parseValue :: Value -> Parser [SchemaResult inner]
+  parseValue (Aeson.Array a) = traverse (parseValue @inner) (Vector.toList a)
+  parseValue _ = fail "..."
+```
+
+^ For `SchemaMaybe`, we'll explicitly handle JSON `null` values, and otherwise let the `inner` schema parse the value, wrapping it in `Just`.
+
+^ For `SchemaList`, we require the value to be a JSON `Array` (failing if it's not) and then parse all the `Value`s in the list according to the `inner` schema.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+-- reference: SchemaObject [(Symbol, SchemaType)]
+
+instance IsSchemaType ('SchemaObject '[]) where
+  parseValue (Aeson.Object _) = return $ UnsafeObject HashMap.empty
+  parseValue _ = fail "..."
+
+instance (...) => IsSchemaType ('SchemaObject ('(key, inner) ': rest)) where
+  parseValue value@(Aeson.Object o) = do
+    let key = Text.pack $ symbolVal (Proxy @key)
+
+    inner <- parseValue @inner (HashMap.lookupDefault Aeson.Null key o)
+
+    UnsafeObject rest <- parseValue @rest value
+
+    return $ UnsafeObject $ HashMap.insert key (toDyn inner) rest
+
+  parseValue _ = fail "..."
+```
+
+^ Lastly, we need to handle `SchemaObject`, where most of the magic happens.
+
+^ First, we use `symbolVal` to convert the type-level key into a `String` that we can use. Then, we lookup the key in the JSON object and parse the resulting `Value` according to the `inner` schema. Finally, we parse the rest of the schema and insert the key and parsed value, after converting the value to `Dynamic`.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+instance IsSchemaType schema => FromJSON (Object schema) where
+  parseJSON = parseValue @schema
+```
+
+^ And now, with `parseValue` implemented, we can go ahead and write a `FromJSON` instance for `Object`. One thing that I didn't include here is I also pass in the path of keys to `parseValue`, so that if a JSON value doesn't parse successfully, we can show a nice error message that shows the path and schema that didn't parse.
+
+^ DEMO: ./badDecode.sh
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+let o :: Object ('SchemaObject '[ '("foo", 'SchemaInt) ])
+    o = ...
+
+getKey @"foo" o :: Int
+```
+
+^ The last thing we need to do is be able to extract data out of the `Object`. To do this, we'll implement a `getKey` function that should work like this. You specify the key as a type application, and `getKey` should find the value associated with that key, converted to the correct type.
+
+^ First, let's write a type family to find a value associated with a key.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+-- Fcf.Lookup    :: a -> [(a, b)] -> Fcf.Exp (Maybe b)
+-- Fcf.FromMaybe :: a -> Maybe a -> Fcf.Exp a
+-- Fcf.=<<       :: (a -> Fcf.Exp b) -> Fcf.Exp a -> Fcf.Exp b
+-- Fcf.Eval      :: Fcf.Exp a -> a
+
+type family LookupSchema (key :: Symbol) (schema :: SchemaType) where
+  LookupSchema key ('SchemaObject schema) = Fcf.Eval
+    ( Fcf.FromMaybe
+        ( TypeError
+          (     'Text "Key '"
+          ':<>: 'Text key
+          ':<>: 'Text "' does not exist in the following schema:"
+          ':$$: 'ShowType schema
+          )
+        )
+      =<< Fcf.Lookup key schema
+    )
+```
+
+^ Thanks to the `first-class-families` package, this is really straightforward. All of these definitions look really similar to the normal functions we're used to, besides the `Exp` type.
+
+^ One cool thing we can do here is use `TypeError` from `GHC.TypeLits` to throw an error at compile time with a custom error message. This will give us the helpful error message we saw earlier in the presentation, if the given key doesn't exist in the schema.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+getKey
+  :: forall key initialSchema. (...)
+  => Object initialSchema -> SchemaResult (LookupSchema key initialSchema)
+getKey (UnsafeObject o) =
+  fromMaybe (error "This should not happen") $
+    fromDynamic (o ! Text.pack key)
+  where
+    key = symbolVal (Proxy @key)
+```
+
+^ Finally, we can implement `getKey`. I've simplified the code here a bit, but this gets the general gist across. First, we lookup the key in the initial schema, which gets us the schema at that key. Then, we get the `SchemaResult` for that schema, which tells us the corresponding Haskell type that we need to return.
+
+^ *With this type definition, our compiler will be able to infer the resulting type, given the initial schema and key!*
+
+^ To implement it, we simply take out the underlying `HashMap`, get the `Dynamic` at the given `key`, then convert the `Dynamic` to the Haskell type we've inferred with `SchemaResult`. Since we know we parsed all the JSON values with the correct types, this should never fail.
+
+---
+
+# Implementing `aeson-schemas`
+
+```hs
+type MySchema = 'SchemaObject
+  '[ '( "users",
+        'SchemaList (
+          'SchemaObject '[ '("id", 'SchemaInt), '("name", 'SchemaText) ]
+         )
+      )
+   ]
+
+jsonData <- decodeFileStrict "example.json"
+
+let o :: Object MySchema
+    o = fromJust jsonData
+
+let names :: [Text]
+    names = map (getKey @"name") $ getKey @"users" o
+```
+
+^ And voila! We can now define a schema at the type level, decode a JSON file matching the schema, and safely extract keys from the object. For the sake of time, I won't be going over implementing the quasiquoters, but all the quasiquoters have to do is generate code that looks like this, and it should still work!
 
 ---
 
