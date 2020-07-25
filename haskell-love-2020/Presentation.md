@@ -1,8 +1,12 @@
-theme: Plain Jane (LeapYear)
+theme: Plain Jane
 footer: Haskell Love 2020 | `aeson-schemas`
 slidenumbers: true
-code: auto(30), Menlo, line-height(1.1)
 autoscale: true
+code: auto(95), Menlo, line-height(1.1)
+background-color: #635C8C
+text: #FFFFFF
+header: #FFFFFF
+footnote-separator: #FFFFFF
 
 [.hide-footer]
 [.slidenumbers: false]
