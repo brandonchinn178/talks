@@ -3,6 +3,7 @@
 
 import Data.Aeson (eitherDecodeFileStrict)
 import Data.Aeson.Schema
+import Data.Aeson.Schema.Internal (showSchema)
 
 type MySchema = [schema|
   {

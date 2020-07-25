@@ -8,6 +8,7 @@ exec stack ghci Example.hs \
     --ghci-options '-XQuasiQuotes -XDataKinds -XTypeApplications'
 
 # DEMO:
+#   >>> putStrLn $ showSchema @MySchema
 #   >>> result <- getResult
 #   >>> result
 #   >>> :t result
