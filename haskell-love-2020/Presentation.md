@@ -506,11 +506,11 @@ type Query2 = [schema|
 | `Just 1`, `Nothing` | `Maybe Int` | `*` |
 | N/A | `Maybe` | `* -> *` |
 
-^ You're probably familiar with values and types. The `Bool` type has two possible values: `True` and `False`, and the `Maybe Int` type is either the `Nothing` value, or a `Just` value containing an `Int`. These two types are different, but they have the same *kind*, which is the type-of-types.
-
-^ `Maybe`, for example, is a type constructor, and it has the kind `* -> *`. You can't actually create values with the type `Maybe`, because it needs to be applied to another type like `Maybe Int`. Only types with kind `*` can have values.
-
 [^2]: `*` is actually deprecated in favor of `Type` from `Data.Kind`, but I like how `*` looks better, so that's why I'm using it.
+
+^
+• Different types, same kind
+• Only types with kind `*` can have values
 
 ---
 
@@ -522,68 +522,22 @@ type Query2 = [schema|
 | `True`, `False` | `Bool` | `*` |
 | N/A | `'True`, `'False` | `Bool` |
 
-^ With the `DataKinds` extension, we can use values at the type level now. Here, `True` and `False` previously had the type of `Bool`, and with `DataKinds`, you can also use them as types, where they now have the kind `Bool`. It's highly recommended to prefix with a single quote when using a value that's been promoted to a type.
+^
+• Only values with type `Bool`
+• Now also types with kind `Bool`
+• Single quote = constructor used as type
 
 ---
 
 # Type-level programming
-
-```hs
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-
-data Status = OPEN | CLOSED
-
-data Restaurant (status :: Status) = Restaurant String
-  deriving (Show)
-
-createRestaurant :: String -> Restaurant 'OPEN
-createRestaurant name = Restaurant name
-
-getName :: Restaurant status -> String
-getName (Restaurant name) = name
-
-closeRestaurant :: Restaurant 'OPEN -> Restaurant 'CLOSED
-closeRestaurant (Restaurant name) = Restaurant name
-
-openRestaurant :: Restaurant 'CLOSED -> Restaurant 'OPEN
-openRestaurant (Restaurant name) = Restaurant name
-```
-
-^ Now that we can use values at the type level, we can teach the compiler to restrict certain actions by encoding requirements in the types. For example, it might be a requirement that you can only close an open restaurant, or that you can only open a closed restaurant. By including a type variable on `Restaurant` with a Kind of `Status`, we can restrict certain functions based on the status of the restaurant.
+## Demo: `Restaurant.hs`
 
 ^ DEMO: `./restaurant.sh`
 
-^ Now, one tricky thing is that after Haskell is compiled, the types go away. Sure, it's nice that we can use `DataKinds` to make the compiler check our logic for us, but we would also like the code to actually do different things based on the type. This sounds like a perfect job for type classes!
-
----
-
-# Type-level programming
-
-```hs
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-
-class StatusInfo (status :: Status) where
-  statusLabel :: String
-
-instance StatusInfo 'OPEN where
-  statusLabel = "open"
-
-instance StatusInfo 'CLOSED where
-  statusLabel = "closed"
-
-showRestaurantMessage :: forall status. Restaurant status -> String
-showRestaurantMessage restaurant =
-  "Restaurant " ++ getName restaurant ++ " is " ++ statusLabel @status
-```
-
-^ Roughly speaking, type classes let you write a function that works on multiple types. Remember that with `DataKinds`, `OPEN` and `CLOSED` are now actually different types, just like `Int` and `Bool`. So just as you can write a class instance to make a function do different things for `Int` and `Bool`, you can write a class instance to make a function do different things for `OPEN` and `CLOSED`.
-
-^ Now, how would you use `statusLabel`? Notice that `statusLabel` just has the type `String`. If you just said `print statusLabel`, how would Haskell know which `statusLabel` to print? The answer is to use the `TypeApplications` extension, where you can use the `@` symbol to indicate which instance to use.
+^
+• Restrict certain actions by encoding requirements in the types
+• Types go away after compilation, use type classes to do different things based on type
+• Type applications to know which `statusLabel` to print
 
 ---
 
@@ -602,9 +556,11 @@ y :: Foo Bool
 y = Just True
 ```
 
-^ The last technique I'm going to go over is type families, another tool we can use when programming at the type level. I find it really helpful to think about type families as functions that operate on types instead of values. This is an uninspired example that demonstrates this concept. `Foo Int` is nothing more than an alias for `[Int]`, and `Foo Bool` is now an alias for `Maybe Bool`.
+^
+• Functions on types instead of values
+• `Foo Int` just an alias for `[Int]`, etc.
 
-^ There's a lot I haven't covered related to type-level programming, but at this point, you should know enough to implement `aeson-schemas`!
+^ Should now know enough to implement `aeson-schemas`
 
 ---
 
