@@ -331,20 +331,17 @@ data Query2 = Query2
 
 # Using `aeson-schemas`
 
-^ With these requirements in mind, I started experimenting and ended up with the `aeson-schemas` library.
-
 ---
 
 # Using `aeson-schemas`
 
 [.column]
 
-```hs
-{-# LANGUAGES DataKinds #-}
-{-# LANGUAGES QuasiQuotes #-}
+[.code-highlight: all]
+[.code-highlight: none]
 
-import Data.Aeson (decodeFileStrict)
-import Data.Aeson.Schema
+```hs
+import Data.Aeson.Schema (schema)
 
 type MySchema = [schema|
   {
@@ -358,27 +355,37 @@ type MySchema = [schema|
 
 [.column]
 
+[.code-highlight: none]
+[.code-highlight: all]
+
 ```hs
-main :: IO ()
-main = do
-  let f = "example.json"
-  result <- decodeFileStrict f
+import Data.Aeson (decodeFileStrict)
+import Data.Aeson.Schema (Object, get)
 
-  let obj :: Object MySchema
-      obj = fromJust result
+obj <- fromJust <$>
+  decodeFileStrict "example.json"
+    :: IO (Object MySchema)
 
-  -- outputs:
-  -- ["Alice", "Bob", "Claire"]
-  print [get| obj.users[].name |]
+-- outputs:
+-- ["Alice", "Bob", "Claire"]
+print [get| obj.users[].name |]
 ```
 
-^ This code snippet gives a quick overview of what `aeson-schemas` can do.
+^
+1st column:
+• Define schema as `MySchema`
+• `schema` quasiquoter
 
-^ First, we define the schema of the JSON data as `MySchema`, using the `schema` quasiquoter. Then, we can decode `Object MySchema` with standard `aeson` decoding functions, such as `decodeFileStrict` here.
+^
+2nd column:
+• Decode `Object MySchema` with standard decode
+• `get` quasiquoter
 
-^ Finally, we can use the `get` quasiquoter to extract values from the `Object`. In this case, we get the `users` key, which is a list of objects with the schema `{ id: Int, name: Text }`. Then for each object in the list, get the `name` key, resulting in a `[Text]`.
-
-^ Going back to the problem requirements, number one: it's type safe. If you try to get `obj.users[].foo`, you'll get an error *at compile-time*, since the key `foo` doesn't exist in the user schema. Number two: the only thing it adds to the namespace is `MySchema`, and, lastly, number three, the `get` quasiquoter allows us to write nicer queries than vanilla Haskell functions would allow us.
+^
+Problem requirements:
+• Type safe: `obj.users[].foo`
+• Namespace: just `MySchema`
+• `get` quasiquoter: nicer syntax
 
 ---
 
@@ -390,11 +397,11 @@ main = do
 ```hs
 type BasicSchema = [schema|
   {
-    bool: Bool,
-    int: Int,
-    double: Double,
-    text: Text,
-    custom: UTCTime,
+    a: Bool,
+    b: Int,
+    c: Double,
+    d: Text,
+    e: UTCTime,
   }
 |]
 ```
@@ -404,23 +411,28 @@ type BasicSchema = [schema|
 ```hs
 type ComplexSchema = [schema|
   {
-    maybeBool: Maybe Bool,
-    listObj: List {
+    foo: List {
       a: Int,
-      b: List Maybe Text,
+      b: Maybe Text,
     },
+    bar: List Maybe Bool,
   }
 |]
 ```
 
-^ Here are some examples of what you can do with the `schema` quasiquoter. On the left, you can see some standard built-in types: `Bool`, `Int`, `Double`, and `Text`. You can also specify any in-scope type that has a `FromJSON` instance, for example `UTCTime` here.
-
-^ On the right, you can see some examples of more complex schemas. You can add `Maybe` or `List` to handle nullable values and a list of values, respectively. These modifiers are right-associative, so for `listObj.b`, you don't need parentheses; this will be interpreted as a list of values, which are themselves a JSON string or null.
+^
+• Specify any type that has a `FromJSON` instance
+• Right associative: `bar` = `[Maybe Bool]`
 
 ---
 
 # Using `aeson-schemas`
 ## `get` quasiquoter
+
+[.code-highlight: all]
+[.code-highlight: 1]
+[.code-highlight: 3]
+[.code-highlight: 5-7]
 
 ```hs
 let users = [get| obj.a.b.users |]
@@ -432,22 +444,38 @@ map [get| .name |] users
 [get| obj.a[].b?.c |]
 ```
 
-^ If you're familiar with the `jq` tool, the `get` quasiquoter uses a similar syntax for extracting values out of JSON data. The first line shows an example of getting a nested value in an object. Again, the compiler will check at compile-time that these keys actually exist in the schema you've defined.
-
-^ The second line demonstrates generating a lambda function with the `get` quasiquoter. At this point, `users` is a normal Haskell list, so you can use standard list operations, like `map`, while using the `get` quasiquoter to handle any `Object`s you might come across.
-
-^ The third line demonstrates applying operations through lists and Maybes. This line would get the `a` key from `obj`. Then for every object inside the list, get the `b` key. Let's say the `b` key is a nullable object, so then if the object exists, get the `c` key in the object.
-
-^ Using quasiquoters, we can get pretty decent syntax for operations that would be difficult to read with plain Haskell syntax, like the example here.
+^
+• `jq`-like syntax
+• 1st line: nested keys, keys checked at compile-time
+• 2nd line: lambda function, `users` = normal list
+• 3rd line: apply ops through lists + Maybes, better syntax than plain Haskell
 
 ^ DEMO: `./example.sh`
 
 ---
 
 # Using `aeson-schemas`
-## GraphQL use-case
 
 [.column]
+
+### GraphQL query
+
+```
+query {
+    users {
+        id
+        name
+        posts {
+            id
+            name
+        }
+    }
+}
+```
+
+[.column]
+
+### `aeson-schemas` schema
 
 ```hs
 type Query1 = [schema|
@@ -464,29 +492,10 @@ type Query1 = [schema|
 |]
 ```
 
-[.column]
-
-```hs
-type Query2 = [schema|
-  {
-    posts: List {
-      id: Text,
-      name: Text,
-      author: {
-        name: Text,
-      },
-      createdAt: Text,
-    },
-  }
-|]
-```
-
-^ Now, with a new library in my hands, I was able to implement another library, `graphql-client`, which would take GraphQL query files as input and generate Haskell code like this.
-
-^ Comparing against the initial GraphQL examples,
-- Three data types down to a single type alias
-- No polluting the namespace with `id` and `name` record fields
-- Bonus: we get a nice query language for extracting the JSON data.
+^
+• 3 data types -> 1 type alias
+• `id`, `name` record fields namespace
+• query language for extracting data
 
 ---
 
@@ -494,7 +503,7 @@ type Query2 = [schema|
 
 ^ Pause for questions here
 
-^ Now, I'm going to give a general overview of how `aeson-schemas` is implemented. But first, I'll do a brief introduction on type-level programming.
+^ Intro to type-level programming + general overview of `aeson-schemas`
 
 ---
 
