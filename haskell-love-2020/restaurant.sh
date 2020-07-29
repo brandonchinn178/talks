@@ -6,8 +6,8 @@ exec stack ghci Restaurant.hs \
     --ghci-options '-XDataKinds'
 
 # DEMO:
-#   >>> :k Restaurant
-#   >>> :k Restaurant 'OPEN
+#   >>> :kind Restaurant
+#   >>> :kind Restaurant 'OPEN
 #   >>> let restaurant = createRestaurant "McDonalds"
 #   >>> :t restaurant
 #   >>> openRestaurant restaurant

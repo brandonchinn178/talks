@@ -92,6 +92,7 @@ data User = User
 ```
 
 ^
+• Usually wouldn't implement manually
 • Derive with `Generic`
 
 ---
@@ -136,9 +137,9 @@ data Resource = Resource
 ```
 
 ^
-• Can't flatten data types (`[Permission]`, `Maybe Resource`)
+• Can't inline data types (`[Permission]`, `Maybe Resource`)
 • Duplicate `name` field
-• Even if manually derive: change field names, but still need all 3
+• Can change field names if manually derive, but still need all 3
 
 ---
 
@@ -281,7 +282,7 @@ data Post1 = Post1
 ^ Not `aeson`'s fault, but clunkiness of Haskell data type definition
 
 ^
-1. We need type safety (we're Haskell devs!), get keys from objects
+1. We need type safety (we're Haskell devs, after all!),  type safety can help us the most when we extract keys from an object
 2. Shadow `user` variable, reserved keywords (`type` or `data`)
 3. Record fields + lenses not great for nested data
 
@@ -331,8 +332,7 @@ print [get| obj.users[].name |]
 
 ^
 1st column:
-• Define schema as `MySchema`
-• `schema` quasiquoter
+• Define schema as `MySchema` with `schema` quasiquoter
 
 ^
 2nd column:
@@ -459,7 +459,7 @@ type Query1 = [schema|
 
 # Implementing `aeson-schemas`
 
-^ Pause for questions here
+^ Pause for questions here if time
 
 ^ Intro to type-level programming + general overview of `aeson-schemas`
 
@@ -528,6 +528,16 @@ y = Just True
 • `Foo Int` just an alias for `[Int]`, etc.
 
 ^ Should now know enough to implement `aeson-schemas`
+
+---
+
+# Implementing `aeson-schemas`
+
+[.build-lists: true]
+
+1. Define the schema
+2. Parse JSON data into `Object`
+3. Extract data from `Object`
 
 ---
 
