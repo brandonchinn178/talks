@@ -24,13 +24,13 @@ footnote-separator: #FFFFFF
 
 * Motivation (5 min)
 
-* Using `aeson-schemas` (5 min)
+* Using `aeson-schemas` (10 min)
 
 * Implementing `aeson-schemas` (10 min)
 
     * Type-level programming 101
 
-* Final Thoughts + Q&A (10 min)
+* Final Thoughts (5 min)
 
 ^
 • Comfortable with basic Haskell concepts
@@ -180,8 +180,9 @@ query {
 ```
 
 ^
-• Alternative to REST, specify fields to query
+• Alternative to REST, send structured query that specifies the particular fields you want from the server
 • Can omit `Post.createdAt`
+• Response guaranteed to match the format of the query
 • Haskell types?
 
 ---
@@ -282,7 +283,7 @@ data Post1 = Post1
 ^ Not `aeson`'s fault, but clunkiness of Haskell data type definition
 
 ^
-1. We need type safety (we're Haskell devs, after all!),  type safety can help us the most when we extract keys from an object
+1. We need type safety (we're Haskell devs, after all!), it'd be nice for compiler to check key
 2. Shadow `user` variable, reserved keywords (`type` or `data`)
 3. Record fields + lenses not great for nested data
 
