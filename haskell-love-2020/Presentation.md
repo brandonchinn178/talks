@@ -33,8 +33,9 @@ footnote-separator: #FFFFFF
 * Final Thoughts (5 min)
 
 ^
-• Comfortable with basic Haskell concepts
-• Questions to Twitch chat
+• First part go over background + usage
+• Second part go over key insights that make this library work
+• Structured talk to be easy to follow, as long as comfortable with basic Haskell concepts
 
 ---
 
@@ -454,7 +455,6 @@ type Query1 = [schema|
 ^
 • 3 data types -> 1 type alias
 • `id`, `name` record fields namespace
-• query language for extracting data
 
 ---
 
